@@ -13,6 +13,7 @@
             @input="validateField('username')"
             :class="{ 'error': errors.username }"
             placeholder="Введите имя пользователя"
+            :disabled="loading"
             required
         />
         <transition name="fade">
@@ -32,6 +33,7 @@
             @input="validateField('email')"
             :class="{ 'error': errors.email }"
             placeholder="Введите email"
+            :disabled="loading"
             required
         />
         <transition name="fade">
@@ -52,12 +54,14 @@
               @input="validateField('password')"
               :class="{ 'error': errors.password }"
               placeholder="Введите пароль"
+              :disabled="loading"
               required
           />
           <button
               type="button"
               class="password-toggle"
               @click="showPassword = !showPassword"
+              :disabled="loading"
           >
             {{ showPassword ? '👁️' : '👁️‍🗨️' }}
           </button>
@@ -80,12 +84,14 @@
               @input="validateField('confirmPassword')"
               :class="{ 'error': errors.confirmPassword }"
               placeholder="Подтвердите пароль"
+              :disabled="loading"
               required
           />
           <button
               type="button"
               class="password-toggle"
               @click="showConfirmPassword = !showConfirmPassword"
+              :disabled="loading"
           >
             {{ showConfirmPassword ? '👁️' : '👁️‍🗨️' }}
           </button>
@@ -121,6 +127,7 @@
               type="checkbox"
               v-model="form.agreeTerms"
               @change="validateField('agreeTerms')"
+              :disabled="loading"
           />
           <span>Я принимаю условия использования и политику конфиденциальности *</span>
         </label>
@@ -168,13 +175,14 @@
     <transition name="slide">
       <div v-if="successMessage" class="success-message">
         <span>{{ successMessage }}</span>
+        <div class="progress-bar" :style="{ width: progressWidth + '%' }"></div>
       </div>
     </transition>
   </div>
 </template>
 
 <script>
-import { ref, reactive, computed, watch } from 'vue'
+import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useStore } from 'vuex'
 import { useRouter } from 'vue-router'
 
@@ -205,6 +213,8 @@ export default {
     const loading = ref(false)
     const serverError = ref('')
     const successMessage = ref('')
+    const progressWidth = ref(0)
+
     const touched = reactive({
       username: false,
       email: false,
@@ -212,6 +222,9 @@ export default {
       confirmPassword: false,
       agreeTerms: false
     })
+
+    let progressInterval = null
+    let successTimeout = null
 
     const validateField = (field) => {
       touched[field] = true
@@ -258,7 +271,6 @@ export default {
           } else {
             errors.password = ''
           }
-
           if (touched.confirmPassword) {
             validateField('confirmPassword')
           }
@@ -330,6 +342,7 @@ export default {
     const handleSubmit = async () => {
 
       Object.keys(form).forEach(field => validateField(field))
+
       if (!isFormValid.value) {
         const firstError = Object.keys(errors).find(key => errors[key])
         if (firstError) {
@@ -353,14 +366,30 @@ export default {
 
         const response = await store.dispatch('register', userData)
 
-        successMessage.value = 'Регистрация прошла успешно! Перенаправление...'
+        successMessage.value = 'Регистрация прошла успешно! Перенаправление на вход...'
 
-        setTimeout(() => {
+        progressWidth.value = 0
+        progressInterval = setInterval(() => {
+          progressWidth.value += 2
+          if (progressWidth.value >= 100) {
+            clearInterval(progressInterval)
+          }
+        }, 30)
+
+        successTimeout = setTimeout(() => {
           router.push('/login')
         }, 2000)
 
       } catch (error) {
-        serverError.value = error.message || 'Ошибка при регистрации'
+        console.error('Register error:', error)
+
+        if (error.message.includes('409')) {
+          serverError.value = 'Пользователь с таким именем или email уже существует'
+        } else if (error.message.includes('400')) {
+          serverError.value = 'Некорректные данные для регистрации'
+        } else {
+          serverError.value = error.message || 'Ошибка при регистрации'
+        }
 
         setTimeout(() => {
           serverError.value = ''
@@ -373,6 +402,15 @@ export default {
     const goBack = () => {
       router.push('/')
     }
+
+    onUnmounted(() => {
+      if (progressInterval) {
+        clearInterval(progressInterval)
+      }
+      if (successTimeout) {
+        clearTimeout(successTimeout)
+      }
+    })
 
     watch(() => form.username, () => {
       if (touched.username) validateField('username')
@@ -396,6 +434,7 @@ export default {
       loading,
       serverError,
       successMessage,
+      progressWidth,
       showPassword,
       showConfirmPassword,
       passwordStrength,
@@ -465,6 +504,12 @@ export default {
   animation: shake 0.3s ease;
 }
 
+.form-group input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: #f0f0f0;
+}
+
 .password-input-wrapper {
   position: relative;
   display: flex;
@@ -484,11 +529,18 @@ export default {
   cursor: pointer;
   padding: 5px;
   color: #666;
-  transition: color 0.3s;
+  transition: all 0.3s;
+  border-radius: 4px;
 }
 
-.password-toggle:hover {
+.password-toggle:hover:not(:disabled) {
   color: #2c3e50;
+  background: rgba(44, 62, 80, 0.1);
+}
+
+.password-toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .error-text {
@@ -535,7 +587,6 @@ export default {
   color: #666;
 }
 
-/* Чекбокс */
 .checkbox-group {
   margin-top: 1rem;
 }
@@ -553,6 +604,11 @@ export default {
   width: auto;
   margin-right: 0.5rem;
   cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 hr {
@@ -577,22 +633,27 @@ hr {
   cursor: pointer;
   transition: all 0.3s;
   font-weight: 500;
-}
-
-.btn-primary {
-  background-color: #2c3e50;
-  color: white;
-  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
 }
 
+.btn-primary {
+  background-color: #2c3e50;
+  color: white;
+  position: relative;
+  overflow: hidden;
+}
+
 .btn-primary:hover:not(:disabled) {
   background-color: #34495e;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(44, 62, 80, 0.3);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .btn-primary:disabled {
@@ -611,6 +672,10 @@ hr {
   box-shadow: 0 4px 12px rgba(127, 140, 141, 0.3);
 }
 
+.btn-secondary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
 .btn-secondary:disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -627,7 +692,7 @@ hr {
   color: #2c3e50;
   text-decoration: none;
   font-weight: 500;
-  transition: color 0.3s;
+  transition: all 0.3s;
 }
 
 .login-link a:hover {
@@ -649,14 +714,17 @@ hr {
   gap: 1rem;
   animation: slideInRight 0.3s ease;
   z-index: 1000;
+  min-width: 300px;
 }
 
 .server-error {
-  background-color: #ff4444;
+  background: linear-gradient(135deg, #ff4444, #ff6b6b);
 }
 
 .success-message {
-  background-color: #00C851;
+  background: linear-gradient(135deg, #00C851, #00e676);
+  position: relative;
+  overflow: hidden;
 }
 
 .close-btn {
@@ -667,11 +735,22 @@ hr {
   cursor: pointer;
   padding: 0 5px;
   opacity: 0.8;
-  transition: opacity 0.3s;
+  transition: all 0.3s;
+  border-radius: 4px;
 }
 
 .close-btn:hover {
   opacity: 1;
+  background: rgba(255,255,255,0.2);
+}
+
+.progress-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: rgba(255,255,255,0.5);
+  transition: width 0.1s linear;
 }
 
 .spinner-small {
@@ -728,12 +807,11 @@ hr {
 }
 
 .fade-enter-active, .fade-leave-active {
-  transition: all 0.3s ease;
+  transition: opacity 0.3s ease;
 }
 
 .fade-enter, .fade-leave-to {
   opacity: 0;
-  transform: translateY(-10px);
 }
 
 .slide-enter-active, .slide-leave-active {
@@ -757,6 +835,12 @@ hr {
 
   .btn-primary, .btn-secondary {
     width: 100%;
+  }
+
+  .server-error, .success-message {
+    left: 20px;
+    right: 20px;
+    min-width: auto;
   }
 }
 </style>
