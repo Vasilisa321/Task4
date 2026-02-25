@@ -1,5 +1,13 @@
 const API_URL = process.env.VUE_APP_API_URL || 'http://lifestealer86.ru/api-shop';
 
+const handleResponse = async (response) => {
+    const data = await response.json();
+    if (!response.ok) {
+        throw new Error(data.error?.message || 'Ошибка запроса');
+    }
+    return data;
+};
+
 export const loginRequest = (credentials) => {
     return fetch(`${API_URL}/login`, {
         method: 'POST',
@@ -7,12 +15,7 @@ export const loginRequest = (credentials) => {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify(credentials)
-    }).then(response => {
-        if (!response.ok) {
-            throw new Error('Ошибка авторизации');
-        }
-        return response.json();
-    });
+    }).then(handleResponse);
 };
 
 export const registerRequest = (userData) => {
@@ -22,19 +25,13 @@ export const registerRequest = (userData) => {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify(userData)
-    }).then(response => {
-        if (!response.ok) {
-            throw new Error('Ошибка регистрации');
-        }
-        return response.json();
-    });
+    }).then(handleResponse);
 };
 
 export const getProducts = () => {
     return fetch(`${API_URL}/products`)
-        .then(response => response.json());
+        .then(handleResponse);
 };
-
 
 export const getCart = () => {
     const token = localStorage.getItem('myAppToken');
@@ -42,9 +39,8 @@ export const getCart = () => {
         headers: {
             'Authorization': `Bearer ${token}`
         }
-    }).then(response => response.json());
+    }).then(handleResponse);
 };
-
 
 export const addToCart = (productId) => {
     const token = localStorage.getItem('myAppToken');
@@ -53,9 +49,8 @@ export const addToCart = (productId) => {
         headers: {
             'Authorization': `Bearer ${token}`
         }
-    }).then(response => response.json());
+    }).then(handleResponse);
 };
-
 
 export const removeFromCart = (productId) => {
     const token = localStorage.getItem('myAppToken');
@@ -64,9 +59,8 @@ export const removeFromCart = (productId) => {
         headers: {
             'Authorization': `Bearer ${token}`
         }
-    }).then(response => response.json());
+    }).then(handleResponse);
 };
-
 
 export const createOrder = () => {
     const token = localStorage.getItem('myAppToken');
@@ -75,7 +69,7 @@ export const createOrder = () => {
         headers: {
             'Authorization': `Bearer ${token}`
         }
-    }).then(response => response.json());
+    }).then(handleResponse);
 };
 
 
@@ -85,5 +79,5 @@ export const getOrders = () => {
         headers: {
             'Authorization': `Bearer ${token}`
         }
-    }).then(response => response.json());
+    }).then(handleResponse);
 };
