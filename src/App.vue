@@ -30,29 +30,29 @@
 </template>
 
 <script>
-import { computed } from 'vue';
-import { useStore } from 'vuex';
-import { useRouter } from 'vue-router';
+import { computed } from 'vue'
+import { useStore } from 'vuex'
+import { useRouter } from 'vue-router'
 
 export default {
   name: 'App',
   setup() {
-    const store = useStore();
-    const router = useRouter();
+    const store = useStore()
+    const router = useRouter()
 
-    const isAuthenticated = computed(() => store.getters.isAuthenticated);
-    const cartCount = computed(() => store.state.cart.length);
-    const loading = computed(() => store.getters.loading);
-    const error = computed(() => store.getters.error);
+    const isAuthenticated = computed(() => store.getters.isAuthenticated)
+    const cartCount = computed(() => store.state.cart.length)
+    const loading = computed(() => store.getters.loading)
+    const error = computed(() => store.getters.error)
 
     const logout = () => {
-      store.dispatch('logout');
-      router.push('/');
-    };
+      store.dispatch('logout')
+      router.push('/')
+    }
 
     const clearError = () => {
-      store.commit('SET_ERROR', null);
-    };
+      store.commit('SET_ERROR', null)
+    }
 
     return {
       isAuthenticated,
@@ -61,9 +61,9 @@ export default {
       error,
       logout,
       clearError
-    };
+    }
   }
-};
+}
 </script>
 
 <style>
@@ -132,6 +132,7 @@ main {
   border-radius: 4px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.2);
   animation: slideIn 0.3s ease;
+  z-index: 1000;
 }
 
 .error-message button {
