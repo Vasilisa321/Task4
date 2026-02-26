@@ -1,6 +1,13 @@
 <template>
   <div class="cart">
-    <h1 class="cart-title">Корзина</h1>
+    <div v-if="cart.length > 0" class="cart-header">
+      <h1 class="cart-title">Корзина</h1>
+      <button @click="goBack" class="back-btn">
+        ← Назад
+      </button>
+    </div>
+
+    <h1 v-else class="cart-title">Корзина</h1>
 
     <div v-if="loading" class="loading-state">
       <div class="spinner"></div>
@@ -11,13 +18,13 @@
       <div class="empty-cart-icon">🛒</div>
       <h2>Корзина пуста</h2>
       <p>Добавьте товары из каталога, чтобы оформить заказ</p>
-      <router-link to="/" class="continue-shopping-btn">
+      <button @click="goBack" class="back-btn empty-cart-btn">
         Назад
-      </router-link>
+      </button>
     </div>
 
+    <!-- Непустая корзина -->
     <div v-else class="cart-content">
-
       <div class="cart-items">
         <div
             v-for="item in groupedCartItems"
@@ -100,29 +107,25 @@
       </div>
     </div>
 
-    <transition name="modal">
-      <div v-if="showRemoveModal" class="modal-overlay" @click="closeRemoveModal">
-        <div class="modal-content" @click.stop>
-          <h3>Подтверждение удаления</h3>
-          <p>Вы уверены, что хотите удалить товар "{{ itemToRemove?.name }}" из корзины?</p>
-          <div class="modal-actions">
-            <button @click="removeItem" class="confirm-btn">
-              Удалить
-            </button>
-            <button @click="closeRemoveModal" class="cancel-btn">
-              Отмена
-            </button>
-          </div>
+    <div v-if="showRemoveModal" class="modal-overlay" @click="closeRemoveModal">
+      <div class="modal-content" @click.stop>
+        <h3>Подтверждение удаления</h3>
+        <p>Вы уверены, что хотите удалить товар "{{ itemToRemove?.name }}" из корзины?</p>
+        <div class="modal-actions">
+          <button @click="removeItem" class="confirm-btn">
+            Удалить
+          </button>
+          <button @click="closeRemoveModal" class="cancel-btn">
+            Отмена
+          </button>
         </div>
       </div>
-    </transition>
+    </div>
 
-    <transition name="slide-fade">
-      <div v-if="notification.show" class="notification" :class="notification.type">
-        <span class="notification-icon">{{ notification.icon }}</span>
-        {{ notification.message }}
-      </div>
-    </transition>
+    <div v-if="notification.show" class="notification" :class="notification.type">
+      <span class="notification-icon">{{ notification.icon }}</span>
+      {{ notification.message }}
+    </div>
   </div>
 </template>
 
@@ -286,6 +289,10 @@ export default {
       }
     },
 
+    goBack() {
+      this.$router.push('/');
+    },
+
     showNotification(type, icon, message) {
       this.notification = {
         show: true,
@@ -302,3 +309,4 @@ export default {
 };
 </script>
 
+<style scoped src="@/assets/styles/main.css"></style>

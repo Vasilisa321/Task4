@@ -50,12 +50,11 @@
               :disabled="isAddingToCart(product.id)"
               :class="{ 'adding': isAddingToCart(product.id) }"
           >
-            <span class="btn-icon" v-if="!isAddingToCart(product.id)">🛒</span>
+            <span class="btn-icon" v-if="!isAddingToCart(product.id)"></span>
             <span class="btn-icon" v-else>⏳</span>
             {{ getButtonText(product.id) }}
           </button>
 
-          <!-- Для неавторизованных показываем сообщение -->
           <div v-else class="login-prompt">
             <router-link to="/login" class="login-prompt-link">
               Войдите, чтобы купить
