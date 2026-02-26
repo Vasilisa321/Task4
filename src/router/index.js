@@ -22,18 +22,18 @@ const routes = [
         path: '/',
         name: 'catalog',
         component: () => import('@/views/CatalogView.vue'),
-        beforeEnter: ifAuthenticated,
+
     },
     {
         path: '/login',
         name: 'login',
-        component: () => import('@/views/LoginView.vue'),  // Изменено с components на views
+        component: () => import('@/views/LoginView.vue'),
         beforeEnter: ifNotAuthenticated,
     },
     {
         path: '/register',
         name: 'register',
-        component: () => import('@/views/RegisterView.vue'),  // Изменено с components на views
+        component: () => import('@/views/RegisterView.vue'),
         beforeEnter: ifNotAuthenticated,
     },
     {
@@ -47,12 +47,23 @@ const routes = [
         name: 'orders',
         component: () => import('@/views/OrdersView.vue'),
         beforeEnter: ifAuthenticated,
+    },
+    {
+        path: '/:pathMatch(.*)*',
+        redirect: '/'
     }
 ];
 
 const router = createRouter({
     history: createWebHistory(process.env.BASE_URL),
-    routes
+    routes,
+    scrollBehavior(to, from, savedPosition) {
+        if (savedPosition) {
+            return savedPosition;
+        } else {
+            return { top: 0, behavior: 'smooth' };
+        }
+    }
 });
 
 export default router;

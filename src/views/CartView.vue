@@ -12,12 +12,12 @@
       <h2>Корзина пуста</h2>
       <p>Добавьте товары из каталога, чтобы оформить заказ</p>
       <router-link to="/" class="continue-shopping-btn">
-        Перейти к покупкам
+        Назад
       </router-link>
     </div>
 
     <div v-else class="cart-content">
-      <!-- Список товаров -->
+
       <div class="cart-items">
         <div
             v-for="item in groupedCartItems"

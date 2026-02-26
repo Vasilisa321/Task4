@@ -3,7 +3,7 @@
     <div class="orders-header">
       <h1>Мои заказы</h1>
       <button @click="goBack" class="back-btn">
-        ← Назад в каталог
+        Назад
       </button>
     </div>
 
