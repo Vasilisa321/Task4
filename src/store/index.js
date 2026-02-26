@@ -1,5 +1,15 @@
 import { createStore } from 'vuex';
-import { loginRequest, registerRequest, getProducts, getCart, addToCart, removeFromCart, createOrder, getOrders } from '@/utils/api';
+import {
+    loginRequest,
+    registerRequest,
+    getProducts,
+    getCart,
+    addToCart,
+    removeFromCart,
+    createOrder,
+    getOrders,
+    logoutRequest
+} from '@/utils/api';
 
 export default createStore({
     state: {
@@ -23,14 +33,17 @@ export default createStore({
     },
 
     mutations: {
-        SET_TOKEN: (state, token) => {
+        AUTH_SUCCESS: (state, token) => {
             state.token = token;
             localStorage.setItem('myAppToken', token);
+            state.error = null;
         },
-        CLEAR_TOKEN: (state) => {
+        AUTH_ERROR: (state) => {
             state.token = '';
             localStorage.removeItem('myAppToken');
+            state.user = null;
         },
+
         SET_USER: (state, user) => {
             state.user = user;
         },
@@ -48,130 +61,177 @@ export default createStore({
         },
         SET_ERROR: (state, error) => {
             state.error = error;
+        },
+        CLEAR_ERROR: (state) => {
+            state.error = null;
         }
     },
+
     actions: {
-        async login({ commit }, credentials) {
+        AUTH_REQUEST: ({ commit }, credentials) => {
             commit('SET_LOADING', true);
-            try {
-                const response = await loginRequest(credentials);
-                commit('SET_TOKEN', response.data.token);
-                commit('SET_USER', response.data.user);
-                commit('SET_ERROR', null);
-                return response;
-            } catch (error) {
-                commit('SET_ERROR', error.message);
-                throw error;
-            } finally {
-                commit('SET_LOADING', false);
-            }
+            commit('CLEAR_ERROR');
+
+            return new Promise((resolve, reject) => {
+                loginRequest(credentials)
+                    .then((token) => {
+                        console.log('Login successful, token:', token);
+                        commit('AUTH_SUCCESS', token);
+                        resolve(token);
+                    })
+                    .catch((error) => {
+                        console.error('Login error:', error);
+                        commit('AUTH_ERROR');
+                        commit('SET_ERROR', error.message || 'Ошибка авторизации');
+                        reject(error);
+                    })
+                    .finally(() => {
+                        commit('SET_LOADING', false);
+                    });
+            });
         },
 
-        async register({ commit }, userData) {
+        REGISTER_REQUEST: ({ commit }, userData) => {
             commit('SET_LOADING', true);
-            try {
-                const response = await registerRequest(userData);
-                commit('SET_ERROR', null);
-                return response;
-            } catch (error) {
-                commit('SET_ERROR', error.message);
-                throw error;
-            } finally {
-                commit('SET_LOADING', false);
-            }
+            commit('CLEAR_ERROR');
+
+            return new Promise((resolve, reject) => {
+                registerRequest(userData)
+                    .then((token) => {
+                        console.log('Registration successful, token:', token);
+                        resolve(token);
+                    })
+                    .catch((error) => {
+                        console.error('Registration error:', error);
+                        commit('SET_ERROR', error.message || 'Ошибка регистрации');
+                        reject(error);
+                    })
+                    .finally(() => {
+                        commit('SET_LOADING', false);
+                    });
+            });
         },
 
-        logout({ commit }) {
-            commit('CLEAR_TOKEN');
-            commit('SET_USER', null);
-            commit('SET_CART', []);
-            commit('SET_ORDERS', []);
+        logout: ({ commit }) => {
+            commit('SET_LOADING', true);
+
+            return logoutRequest()
+                .then(() => {
+                    commit('AUTH_ERROR');
+                    commit('SET_CART', []);
+                    commit('SET_ORDERS', []);
+                })
+                .catch((error) => {
+                    console.error('Logout error:', error);
+                    commit('AUTH_ERROR');
+                })
+                .finally(() => {
+                    commit('SET_LOADING', false);
+                });
         },
 
-        async fetchProducts({ commit }) {
+        fetchProducts: ({ commit }) => {
             commit('SET_LOADING', true);
-            try {
-                const response = await getProducts();
-                commit('SET_PRODUCTS', response.data);
-                commit('SET_ERROR', null);
-            } catch (error) {
-                commit('SET_ERROR', error.message);
-            } finally {
-                commit('SET_LOADING', false);
-            }
+
+            return getProducts()
+                .then((products) => {
+                    commit('SET_PRODUCTS', products);
+                })
+                .catch((error) => {
+                    console.error('Fetch products error:', error);
+                    commit('SET_ERROR', error.message);
+                })
+                .finally(() => {
+                    commit('SET_LOADING', false);
+                });
         },
 
-        async fetchCart({ commit, state }) {
-            if (!state.token) return;
+        fetchCart: ({ commit, state }) => {
+            if (!state.token) return Promise.resolve();
 
             commit('SET_LOADING', true);
-            try {
-                const response = await getCart();
-                commit('SET_CART', response.data);
-                commit('SET_ERROR', null);
-            } catch (error) {
-                commit('SET_ERROR', error.message);
-            } finally {
-                commit('SET_LOADING', false);
-            }
+
+            return getCart()
+                .then((cart) => {
+                    commit('SET_CART', cart || []);
+                })
+                .catch((error) => {
+                    console.error('Fetch cart error:', error);
+                    commit('SET_ERROR', error.message);
+                })
+                .finally(() => {
+                    commit('SET_LOADING', false);
+                });
         },
 
-        async addToCart({ commit, dispatch }, productId) {
+        addToCart: ({ commit, dispatch }, productId) => {
             commit('SET_LOADING', true);
-            try {
-                await addToCart(productId);
-                await dispatch('fetchCart');
-                commit('SET_ERROR', null);
-            } catch (error) {
-                commit('SET_ERROR', error.message);
-                throw error;
-            } finally {
-                commit('SET_LOADING', false);
-            }
+
+            return addToCart(productId)
+                .then(() => {
+                    return dispatch('fetchCart');
+                })
+                .catch((error) => {
+                    console.error('Add to cart error:', error);
+                    commit('SET_ERROR', error.message);
+                    throw error;
+                })
+                .finally(() => {
+                    commit('SET_LOADING', false);
+                });
         },
 
-        async removeFromCart({ commit, dispatch }, productId) {
+        removeFromCart: ({ commit, dispatch }, cartItemId) => {
             commit('SET_LOADING', true);
-            try {
-                await removeFromCart(productId);
-                await dispatch('fetchCart');
-                commit('SET_ERROR', null);
-            } catch (error) {
-                commit('SET_ERROR', error.message);
-                throw error;
-            } finally {
-                commit('SET_LOADING', false);
-            }
+
+            return removeFromCart(cartItemId)
+                .then(() => {
+                    return dispatch('fetchCart');
+                })
+                .catch((error) => {
+                    console.error('Remove from cart error:', error);
+                    commit('SET_ERROR', error.message);
+                    throw error;
+                })
+                .finally(() => {
+                    commit('SET_LOADING', false);
+                });
         },
 
-        async checkout({ commit, dispatch }) {
+        checkout: ({ commit, dispatch }) => {
             commit('SET_LOADING', true);
-            try {
-                const response = await createOrder();
-                await dispatch('fetchCart');
-                commit('SET_ERROR', null);
-                return response;
-            } catch (error) {
-                commit('SET_ERROR', error.message);
-                throw error;
-            } finally {
-                commit('SET_LOADING', false);
-            }
+
+            return createOrder()
+                .then((result) => {
+                    dispatch('fetchCart');
+                    return result;
+                })
+                .catch((error) => {
+                    console.error('Checkout error:', error);
+                    commit('SET_ERROR', error.message);
+                    throw error;
+                })
+                .finally(() => {
+                    commit('SET_LOADING', false);
+                });
         },
 
-        async fetchOrders({ commit, state }) {
-            if (!state.token) return;
+        fetchOrders: ({ commit, state }) => {
+            if (!state.token) return Promise.resolve();
 
             commit('SET_LOADING', true);
-            try {
-                const response = await getOrders();
-                commit('SET_ORDERS', response.data);
-                commit('SET_ERROR', null);
-            } catch (error) {
-                commit('SET_ERROR', error.message);
-            } finally {
-                commit('SET_LOADING', false);
-            }
+
+            return getOrders()
+                .then((orders) => {
+                    commit('SET_ORDERS', orders || []);
+                })
+                .catch((error) => {
+                    console.error('Fetch orders error:', error);
+                    commit('SET_ERROR', error.message);
+                })
+                .finally(() => {
+                    commit('SET_LOADING', false);
+                });
         }
     }
 });
